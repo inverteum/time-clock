@@ -1,6 +1,8 @@
 (function () {
   "use strict";
 
+  var STORAGE_KEY = "inverteum-time-clock-v1";
+  var storageAvailable = false;
   var sessionStarted = new Date();
   var people = [];
   var events = [];
@@ -16,6 +18,9 @@
   var nowDisplay = document.getElementById("now-display");
   var sessionMeta = document.getElementById("session-meta");
   var exportBtn = document.getElementById("export-btn");
+  var clearBtn = document.getElementById("clear-btn");
+  var storageBanner = document.getElementById("storage-banner");
+  var fallbackBanner = document.getElementById("fallback-banner");
 
   function pad(value, width) {
     var text = String(value);
@@ -97,6 +102,115 @@
     return total;
   }
 
+  function parseDate(value) {
+    if (!value) return null;
+    var date = new Date(value);
+    if (isNaN(date.getTime())) return null;
+    return date;
+  }
+
+  function showFallbackBanner() {
+    if (storageBanner) storageBanner.hidden = true;
+    if (fallbackBanner) fallbackBanner.hidden = false;
+  }
+
+  function probeStorage() {
+    try {
+      if (!window.localStorage) return false;
+      var probeKey = STORAGE_KEY + "-probe";
+      window.localStorage.setItem(probeKey, "1");
+      window.localStorage.removeItem(probeKey);
+      return true;
+    } catch (err) {
+      return false;
+    }
+  }
+
+  function applyState(data) {
+    var started = parseDate(data && data.sessionStarted);
+    var nextPeople = [];
+    var nextEvents = [];
+
+    if (Array.isArray(data && data.people)) {
+      data.people.forEach(function (item) {
+        if (!item || !item.name) return;
+        nextPeople.push({
+          name: String(item.name),
+          completedMs: typeof item.completedMs === "number" && isFinite(item.completedMs)
+            ? item.completedMs
+            : 0,
+          clockedInAt: parseDate(item.clockedInAt),
+        });
+      });
+    }
+
+    if (Array.isArray(data && data.events)) {
+      data.events.forEach(function (item) {
+        var timestamp = parseDate(item && item.timestamp);
+        if (!item || !item.name || !timestamp) return;
+        if (item.event !== "clock_in" && item.event !== "clock_out") return;
+        nextEvents.push({
+          name: String(item.name),
+          event: item.event,
+          timestamp: timestamp,
+        });
+      });
+    }
+
+    sessionStarted = started || new Date();
+    people = nextPeople;
+    events = nextEvents;
+  }
+
+  function serializeState() {
+    return JSON.stringify({
+      sessionStarted: toIsoWithOffset(sessionStarted),
+      people: people.map(function (person) {
+        return {
+          name: person.name,
+          completedMs: person.completedMs,
+          clockedInAt: person.clockedInAt ? toIsoWithOffset(person.clockedInAt) : null,
+        };
+      }),
+      events: events.map(function (record) {
+        return {
+          name: record.name,
+          event: record.event,
+          timestamp: toIsoWithOffset(record.timestamp),
+        };
+      }),
+    });
+  }
+
+  function saveState() {
+    if (!storageAvailable) return;
+    try {
+      window.localStorage.setItem(STORAGE_KEY, serializeState());
+    } catch (err) {
+      storageAvailable = false;
+      showFallbackBanner();
+    }
+  }
+
+  function loadState() {
+    var raw;
+    try {
+      raw = window.localStorage.getItem(STORAGE_KEY);
+    } catch (err) {
+      storageAvailable = false;
+      showFallbackBanner();
+      return;
+    }
+    if (!raw) return;
+    try {
+      applyState(JSON.parse(raw));
+    } catch (err) {
+      people = [];
+      events = [];
+      sessionStarted = new Date();
+    }
+  }
+
   function setError(el, message) {
     if (message) {
       el.hidden = false;
@@ -120,7 +234,7 @@
     now = now || new Date();
     nowDisplay.textContent = toHumanTime(now);
     sessionMeta.textContent =
-      "This in-memory session started " + toHumanTime(sessionStarted) + ".";
+      "Records in this browser first started saving " + toHumanTime(sessionStarted) + ".";
 
     var clockedIn = people
       .filter(function (person) { return person.clockedInAt; })
@@ -166,7 +280,7 @@
       : ranked.length + " people";
 
     if (ranked.length === 0) {
-      boardEl.innerHTML = '<p class="empty">No time recorded yet this session.</p>';
+      boardEl.innerHTML = '<p class="empty">No time recorded yet.</p>';
     } else {
       boardEl.innerHTML = ranked.map(function (entry, index) {
         var badge = entry.person.clockedInAt
@@ -235,6 +349,7 @@
     clockForm.reset();
     clockName.focus();
     render(now);
+    saveState();
   }
 
   function stillClockedIn(name, eventTime) {
@@ -301,17 +416,47 @@
     setStatus("CSV downloaded with " + events.length + " event row" + (events.length === 1 ? "" : "s") + ".", "ok");
   }
 
+  function clearRecords() {
+    if (!window.confirm("This will erase all saved clock records in this browser. Continue?")) {
+      return;
+    }
+    people = [];
+    events = [];
+    sessionStarted = new Date();
+    saveState();
+    setStatus("All saved clock records in this browser were erased.", "ok");
+    render();
+  }
+
+  function onStorage(event) {
+    if (event.key !== STORAGE_KEY) return;
+    if (event.newValue == null) {
+      people = [];
+      events = [];
+      sessionStarted = new Date();
+      render();
+      return;
+    }
+    try {
+      applyState(JSON.parse(event.newValue));
+      render();
+    } catch (err) {
+      // Ignore a bad payload written in another tab.
+    }
+  }
+
+  storageAvailable = probeStorage();
+  if (storageAvailable) {
+    loadState();
+  } else {
+    showFallbackBanner();
+  }
+
   clockForm.addEventListener("submit", onClock);
   exportBtn.addEventListener("click", exportCsv);
+  clearBtn.addEventListener("click", clearRecords);
+  window.addEventListener("storage", onStorage);
 
-  window.addEventListener("beforeunload", function (event) {
-    if (people.length === 0 && events.length === 0) return;
-    event.preventDefault();
-    event.returnValue = "";
-  });
-
-  sessionMeta.textContent =
-    "This in-memory session started " + toHumanTime(sessionStarted) + ".";
   render();
   window.setInterval(function () { render(); }, 1000);
 })();

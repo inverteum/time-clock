@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
   <meta name="theme-color" content="#1c1814">
-  <meta name="description" content="Time Clock. In-memory only — data is cleared when this page is refreshed or discarded.">
+  <meta name="description" content="Time Clock. Records are saved in this browser; nothing is sent to a server.">
   <title>Time Clock — Brian Chan</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="styles.css">
@@ -26,12 +26,16 @@
       </div>
     </header>
 
-    <div class="banner" role="note">
+    <div class="banner" id="storage-banner" role="note">
       <p>
-        <strong>All data lives only in this browser tab.</strong>
-        Refreshing the page, closing the tab, or a browser memory-saver / tab-discard will wipe every clock-in and total.
-        Nothing is saved to disk, the cloud, or browser storage.
-        Download a CSV if you need a record before leaving.
+        <strong>Records are saved in this browser.</strong>
+        Nothing is sent to a server. Another browser, a private window, or clearing site data starts empty.
+      </p>
+    </div>
+    <div class="banner banner-fallback" id="fallback-banner" role="alert" hidden>
+      <p>
+        <strong>This browser cannot save records.</strong>
+        Clock events will be kept only in this tab. Refreshing the page, closing the tab, or a browser memory-saver / tab-discard will wipe everything. Nothing is sent to a server.
       </p>
     </div>
 
@@ -74,21 +78,24 @@
         <h2 id="board-heading">Leaderboard</h2>
         <p class="count" id="board-count"></p>
       </div>
-      <p class="lede">Total time clocked in since this Time Clock page was first loaded. Ranked by that total, including the live current stint.</p>
+      <p class="lede">Total time clocked in since records first started saving in this browser. Ranked by that total, including the live current stint.</p>
       <div id="leaderboard" class="list"></div>
     </section>
 
     <section class="panel export-panel" aria-labelledby="export-heading">
       <h2 id="export-heading">Export</h2>
       <p class="lede">
-        Download a CSV of every clock-in and clock-out event from this page load.
+        Download a CSV of every clock-in and clock-out event saved in this browser.
         If someone is still clocked in, their open clock-in row is included with a note.
       </p>
-      <button type="button" class="btn secondary" id="export-btn">Download CSV</button>
+      <div class="export-actions">
+        <button type="button" class="btn secondary" id="export-btn">Download CSV</button>
+        <button type="button" class="btn warn" id="clear-btn">Clear saved records</button>
+      </div>
     </section>
 
     <footer class="colophon">
-      <p>Time Clock · in-memory session only · no accounts or server.</p>
+      <p>Time Clock · records saved in this browser · no accounts or server.</p>
     </footer>
   </div>
   <script src="app.js" defer></script>
