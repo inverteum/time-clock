@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#1c1814">
+  <meta name="description" content="Time Clock. In-memory only — data is cleared when this page is refreshed or discarded.">
+  <title>Time Clock — Brian Chan</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="page">
+    <header class="masthead">
+      <div class="masthead-mark" aria-hidden="true">
+        <img src="favicon.svg" alt="" width="36" height="36">
+      </div>
+      <div class="masthead-titles">
+        <p class="eyebrow">Brian Chan</p>
+        <h1>Time Clock</h1>
+      </div>
+      <div class="masthead-clock">
+        <p class="clock-label" id="now-label">Local time</p>
+        <p class="clock-value" id="now-display" aria-labelledby="now-label">—</p>
+      </div>
+    </header>
+
+    <div class="banner" role="note">
+      <p>
+        <strong>All data lives only in this browser tab.</strong>
+        Refreshing the page, closing the tab, or a browser memory-saver / tab-discard will wipe every clock-in and total.
+        Nothing is saved to disk, the cloud, or browser storage.
+        Download a CSV if you need a record before leaving.
+      </p>
+    </div>
+
+    <p class="session-meta" id="session-meta"></p>
+
+    <div class="status" id="status" role="status" aria-live="polite"></div>
+
+    <section class="panel" aria-labelledby="clock-heading">
+      <h2 id="clock-heading">Clock in / out</h2>
+      <p class="lede">Enter your name to clock in or out. No sign-up is needed. Use the same name each time, including capitalization.</p>
+      <form id="clock-form" novalidate>
+        <div class="field">
+          <label for="clock-name">Name</label>
+          <input
+            id="clock-name"
+            name="name"
+            type="text"
+            required
+            autocomplete="nickname"
+            autocapitalize="words"
+            spellcheck="true"
+            aria-describedby="clock-error">
+        </div>
+        <p class="error" id="clock-error" role="alert" hidden></p>
+        <button type="submit" class="btn primary">Clock in / out</button>
+      </form>
+    </section>
+
+    <section class="panel roster-panel" aria-labelledby="roster-heading">
+      <div class="panel-head">
+        <h2 id="roster-heading">Currently clocked in</h2>
+        <p class="count" id="roster-count" aria-live="polite"></p>
+      </div>
+      <p class="lede">Live time is the current continuous clock-in, not the session total.</p>
+      <div id="roster" class="list"></div>
+    </section>
+
+    <section class="panel board-panel" aria-labelledby="board-heading">
+      <div class="panel-head">
+        <h2 id="board-heading">Leaderboard</h2>
+        <p class="count" id="board-count"></p>
+      </div>
+      <p class="lede">Total time clocked in since this Time Clock page was first loaded. Ranked by that total, including the live current stint.</p>
+      <div id="leaderboard" class="list"></div>
+    </section>
+
+    <section class="panel export-panel" aria-labelledby="export-heading">
+      <h2 id="export-heading">Export</h2>
+      <p class="lede">
+        Download a CSV of every clock-in and clock-out event from this page load.
+        If someone is still clocked in, their open clock-in row is included with a note.
+      </p>
+      <button type="button" class="btn secondary" id="export-btn">Download CSV</button>
+    </section>
+
+    <footer class="colophon">
+      <p>Time Clock · in-memory session only · no accounts or server.</p>
+    </footer>
+  </div>
+  <script src="app.js" defer></script>
+</body>
+</html>
